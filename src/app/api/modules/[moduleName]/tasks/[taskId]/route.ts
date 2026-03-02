@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { completeTask, assignTask, removeTask } from "@/lib/db/queries";
+import { completeTask, assignTask, updateTaskText, updateTaskDate, updateTaskPhase, removeTask } from "@/lib/db/queries";
 
 type Params = { params: Promise<{ moduleName: string; taskId: string }> };
 
@@ -18,6 +18,24 @@ export async function PATCH(req: Request, { params }: Params) {
 
     if (body.action === "assign" && body.assignee) {
       const task = await assignTask(mod, id, body.assignee);
+      if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return NextResponse.json(task);
+    }
+
+    if (body.action === "edit" && body.text) {
+      const task = await updateTaskText(mod, id, body.text);
+      if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return NextResponse.json(task);
+    }
+
+    if (body.action === "date" && body.date) {
+      const task = await updateTaskDate(mod, id, body.date);
+      if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return NextResponse.json(task);
+    }
+
+    if (body.action === "phase" && body.phase !== undefined) {
+      const task = await updateTaskPhase(mod, id, Number(body.phase));
       if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
       return NextResponse.json(task);
     }

@@ -2,15 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
+import { Button } from "@/components/ui/button";
 
 const links = [
   { href: "/", label: "Dashboard" },
-  { href: "/tasks", label: "Tasks" },
+  { href: "/sprints", label: "GoLive" },
   { href: "/modules", label: "Modules" },
+  { href: "/tasks", label: "Tasks" },
 ];
 
 export function Nav() {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   return (
     <nav className="border-b border-border bg-card">
@@ -32,6 +36,26 @@ export function Nav() {
               {l.label}
             </Link>
           ))}
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          {session?.user ? (
+            <>
+              <span className="text-sm text-muted-foreground">
+                {session.user.name ?? session.user.email}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+              >
+                Sign out
+              </Button>
+            </>
+          ) : (
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/auth/signin">Sign in</Link>
+            </Button>
+          )}
         </div>
       </div>
     </nav>

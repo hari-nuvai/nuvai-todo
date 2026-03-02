@@ -9,6 +9,9 @@ interface TaskListProps {
   onComplete?: (taskId: number) => void;
   onDelete?: (taskId: number) => void;
   onAssign?: (taskId: number, assignee: string) => void;
+  onEdit?: (taskId: number, text: string) => void;
+  onDateChange?: (taskId: number, date: string) => void;
+  onPhaseChange?: (taskId: number, phase: number) => void;
 }
 
 export function TaskList({
@@ -18,6 +21,9 @@ export function TaskList({
   onComplete,
   onDelete,
   onAssign,
+  onEdit,
+  onDateChange,
+  onPhaseChange,
 }: TaskListProps) {
   if (tasks.length === 0) {
     return (
@@ -28,7 +34,7 @@ export function TaskList({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {tasks.map((task) => (
         <TaskRow
           key={task.id}
@@ -38,6 +44,9 @@ export function TaskList({
           onComplete={() => onComplete?.(task.id)}
           onDelete={() => onDelete?.(task.id)}
           onAssign={(assignee) => onAssign?.(task.id, assignee)}
+          onEdit={(text) => onEdit?.(task.id, text)}
+          onDateChange={(date) => onDateChange?.(task.id, date)}
+          onPhaseChange={(phase) => onPhaseChange?.(task.id, phase)}
         />
       ))}
     </div>

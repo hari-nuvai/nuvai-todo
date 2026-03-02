@@ -9,18 +9,38 @@ interface Module {
   name: string;
 }
 
+interface MatrixRow {
+  module: string;
+  status: string;
+  owner: string;
+}
+
+interface MatrixData {
+  rows: MatrixRow[];
+}
+
 export default function ModulesPage() {
   const [modules, setModules] = useState<Module[]>([]);
+  const [matrixRows, setMatrixRows] = useState<MatrixRow[]>([]);
 
   const load = useCallback(() => {
     fetch("/api/modules")
       .then((r) => r.json())
       .then(setModules);
+    fetch("/api/matrix")
+      .then((r) => r.json())
+      .then((data: MatrixData) => {
+        if (data?.rows) setMatrixRows(data.rows);
+      });
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  function getModuleInfo(name: string) {
+    return matrixRows.find((r) => r.module === name) ?? null;
+  }
 
   return (
     <div className="space-y-6">
@@ -33,10 +53,18 @@ export default function ModulesPage() {
           No modules yet. Create one to get started.
         </p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {modules.map((m) => (
-            <ModuleCard key={m.id} name={m.name} />
-          ))}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {modules.map((m) => {
+            const info = getModuleInfo(m.name);
+            return (
+              <ModuleCard
+                key={m.id}
+                name={m.name}
+                status={info?.status}
+                owner={info?.owner}
+              />
+            );
+          })}
         </div>
       )}
     </div>

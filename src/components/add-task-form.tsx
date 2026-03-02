@@ -16,9 +16,10 @@ interface AddTaskFormProps {
   modules?: string[];
   date?: string;
   onAdded?: () => void;
+  stages?: string[];
 }
 
-export function AddTaskForm({ moduleName, modules, date, onAdded }: AddTaskFormProps) {
+export function AddTaskForm({ moduleName, modules, date, onAdded, stages }: AddTaskFormProps) {
   const [text, setText] = useState("");
   const [phase, setPhase] = useState("0");
   const [assignee, setAssignee] = useState("");
@@ -28,12 +29,21 @@ export function AddTaskForm({ moduleName, modules, date, onAdded }: AddTaskFormP
   const [taskDate, setTaskDate] = useState(date ?? new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(false);
   const [existingAssignees, setExistingAssignees] = useState<string[]>([]);
+  const [selectedStage, setSelectedStage] = useState("");
+  const [fetchedStages, setFetchedStages] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/assignees")
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setExistingAssignees(data); });
-  }, []);
+    if (!stages) {
+      fetch("/api/stages")
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) setFetchedStages(data.map((s: { name: string }) => s.name));
+        });
+    }
+  }, [stages]);
 
   // Sync external date prop
   useEffect(() => {
@@ -64,6 +74,7 @@ export function AddTaskForm({ moduleName, modules, date, onAdded }: AddTaskFormP
           phase: parseInt(phase, 10),
           assignee: finalAssignee || undefined,
           date: taskDate,
+          stageName: selectedStage && selectedStage !== "none" ? selectedStage : undefined,
         }),
       });
       setText("");
@@ -116,6 +127,19 @@ export function AddTaskForm({ moduleName, modules, date, onAdded }: AddTaskFormP
             <SelectItem value="1">P1 High</SelectItem>
             <SelectItem value="2">P2 Medium</SelectItem>
             <SelectItem value="3">P3 Low</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Stage */}
+        <Select value={selectedStage} onValueChange={setSelectedStage}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Stage" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">No Stage</SelectItem>
+            {(stages ?? fetchedStages).map((s) => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
 

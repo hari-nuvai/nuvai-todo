@@ -27,6 +27,7 @@ export async function POST(
       phase: body.phase,
       assignee: body.assignee,
       date: body.date,
+      stageName: body.stageName,
     });
     return NextResponse.json(task, { status: 201 });
   } catch (e: unknown) {
