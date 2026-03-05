@@ -28,6 +28,7 @@ function fmtShort(d: Date): string {
 export function WeekNavigator({ weekStart, onChange }: WeekNavigatorProps) {
   const monday = new Date(weekStart + "T00:00:00");
   const friday = getFriday(monday);
+  const isThisWeek = fmt(getMonday(new Date())) === weekStart;
 
   function shift(weeks: number) {
     const d = new Date(monday);
@@ -40,18 +41,31 @@ export function WeekNavigator({ weekStart, onChange }: WeekNavigatorProps) {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Button variant="outline" size="sm" onClick={() => shift(-1)}>
-        Prev
+    <div className="inline-flex items-center rounded-md border border-border h-8">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 w-8 p-0 rounded-r-none border-r border-border"
+        onClick={() => shift(-1)}
+      >
+        &larr;
       </Button>
-      <span className="text-sm font-medium min-w-[180px] text-center">
-        {fmtShort(monday)} — {fmtShort(friday)}, {monday.getFullYear()}
-      </span>
-      <Button variant="outline" size="sm" onClick={() => shift(1)}>
-        Next
-      </Button>
-      <Button variant="ghost" size="sm" onClick={goThisWeek}>
-        This Week
+      <button
+        className={`px-3 h-8 text-xs font-medium hover:bg-accent transition-colors ${
+          isThisWeek ? "text-foreground" : "text-muted-foreground"
+        }`}
+        onClick={goThisWeek}
+        title="Go to this week"
+      >
+        {fmtShort(monday)} – {fmtShort(friday)}, {monday.getFullYear()}
+      </button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 w-8 p-0 rounded-l-none border-l border-border"
+        onClick={() => shift(1)}
+      >
+        &rarr;
       </Button>
     </div>
   );

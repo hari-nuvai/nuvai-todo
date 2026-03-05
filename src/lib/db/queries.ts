@@ -1,5 +1,5 @@
 import { eq, and, sql, gte, lte } from "drizzle-orm";
-import { db } from "./index";
+import { db, withRetry } from "./index";
 import {
   modules,
   tasks,
@@ -15,6 +15,13 @@ export async function listModules() {
 
 export async function createModule(name: string) {
   const [mod] = await db.insert(modules).values({ name }).returning();
+  const notStarted = await getStageByName("Not Started");
+  if (notStarted) {
+    await db
+      .insert(moduleStages)
+      .values({ moduleId: mod.id, stageId: notStarted.id })
+      .onConflictDoNothing();
+  }
   return mod;
 }
 
@@ -59,10 +66,12 @@ export async function addTask(params: {
   if (!mod) throw new Error(`Module "${params.moduleName}" not found`);
 
   let stageId: number | null = null;
-  if (params.stageName) {
-    const stage = await getStageByName(params.stageName);
-    if (!stage) throw new Error(`Stage "${params.stageName}" not found`);
+  const stageName = params.stageName ?? "Not Started";
+  const stage = await getStageByName(stageName);
+  if (stage) {
     stageId = stage.id;
+  } else if (params.stageName) {
+    throw new Error(`Stage "${params.stageName}" not found`);
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -218,6 +227,7 @@ export async function dailySummary(date?: string) {
 // ── Dashboard ────────────────────────────────────────
 
 export async function dashboard() {
+  return withRetry(async () => {
   const allTasks = await db
     .select({
       moduleName: modules.name,
@@ -269,6 +279,7 @@ export async function dashboard() {
   }
 
   return { total, completed, pending, byModule, byAssignee, byPhase, byStage };
+  });
 }
 
 // ── Extra helpers for UI ─────────────────────────────
@@ -472,6 +483,7 @@ export async function setModuleStatus(moduleName: string, statusName: string) {
 // ── Stage-Module Matrix ─────────────────────────────
 
 export async function getStageModuleMatrix() {
+  return withRetry(async () => {
   const allStagesList = await listStages();
 
   // Get all links: module name, stage name, owner
@@ -503,6 +515,7 @@ export async function getStageModuleMatrix() {
   }
 
   return { stages: allStagesList, rows, summary };
+  });
 }
 
 // ── Weekly Summary ──────────────────────────────────

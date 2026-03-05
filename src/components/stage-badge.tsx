@@ -1,12 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 
 const stageColors: Record<string, string> = {
-  "Not Started": "bg-gray-500/30 text-gray-200 border-gray-500/40",
-  "In Progress": "bg-blue-500/30 text-blue-200 border-blue-500/40",
-  "Testing": "bg-purple-500/30 text-purple-200 border-purple-500/40",
-  "Completed": "bg-green-500/30 text-green-200 border-green-500/40",
-  "Blocked": "bg-red-500/30 text-red-200 border-red-500/40",
-  "On Hold": "bg-yellow-500/30 text-yellow-200 border-yellow-500/40",
+  "Not Started": "bg-[#aaa]/10 text-[#aaa] border-[#aaa]/30",
+  "In Progress": "bg-[#60a5fa]/10 text-[#60a5fa] border-[#60a5fa]/30",
+  "Testing": "bg-[#a78bfa]/10 text-[#a78bfa] border-[#a78bfa]/30",
+  "Completed": "bg-[#4ade80]/10 text-[#4ade80] border-[#4ade80]/30",
+  "Blocked": "bg-[#f87171]/10 text-[#f87171] border-[#f87171]/30",
+  "On Hold": "bg-[#fbbf24]/10 text-[#fbbf24] border-[#fbbf24]/30",
 };
 
 export function StageBadge({ stage }: { stage: string }) {

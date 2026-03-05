@@ -41,7 +41,7 @@ export default function ModuleDetailPage({
   const load = useCallback(() => {
     // Fetch tasks with stage info via /api/tasks
     fetch(`/api/tasks?module=${encodeURIComponent(decodedName)}`)
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         if (Array.isArray(data)) setTasks(data);
       });
@@ -49,7 +49,7 @@ export default function ModuleDetailPage({
 
   const loadStages = useCallback(() => {
     fetch("/api/stages")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         if (Array.isArray(data)) setAllStages(data);
       });
@@ -57,14 +57,14 @@ export default function ModuleDetailPage({
 
   const loadModuleStatus = useCallback(() => {
     fetch(`/api/modules/${encodeURIComponent(decodedName)}/stages`)
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
           setModuleStatus(data[0].name);
         }
       });
     fetch(`/api/module-stages/owners?module=${encodeURIComponent(decodedName)}`)
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.owner) setModuleOwner(data.owner);
       });
@@ -214,18 +214,21 @@ export default function ModuleDetailPage({
           </h1>
         )}
         {moduleStatus && (
-          <Select value={moduleStatus} onValueChange={handleStatusChange}>
-            <SelectTrigger className="w-[160px] h-9">
-              <StageBadge stage={moduleStatus} />
-            </SelectTrigger>
-            <SelectContent position="popper" sideOffset={4}>
-              {allStages.map((s) => (
-                <SelectItem key={s.id} value={s.name}>
-                  <StageBadge stage={s.name} />
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground">Module Status:</span>
+            <Select value={moduleStatus} onValueChange={handleStatusChange}>
+              <SelectTrigger className="w-[160px] h-9">
+                <StageBadge stage={moduleStatus} />
+              </SelectTrigger>
+              <SelectContent position="popper" sideOffset={4}>
+                {allStages.map((s) => (
+                  <SelectItem key={s.id} value={s.name}>
+                    <StageBadge stage={s.name} />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
         {moduleOwner && (
           <span className="text-sm text-muted-foreground">

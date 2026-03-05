@@ -29,30 +29,39 @@ const phaseLabels: Record<string, string> = {
 };
 
 const phaseColors: Record<string, string> = {
-  "0": "bg-red-500",
-  "1": "bg-orange-500",
-  "2": "bg-blue-500",
-  "3": "bg-zinc-500",
+  "0": "bg-[#f87171]",
+  "1": "bg-[#fbbf24]",
+  "2": "bg-[#60a5fa]",
+  "3": "bg-[#666]",
 };
 
 export function DashboardStats() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [matrix, setMatrix] = useState<MatrixData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Load dashboard first — don't wait for matrix
     fetch("/api/dashboard")
-      .then((r) => r.json())
-      .then(setData);
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setData(d); })
+      .finally(() => setLoading(false));
+
+    // Matrix loads in background, renders when ready
     fetch("/api/matrix")
-      .then((r) => r.json())
-      .then(setMatrix);
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m) => { if (m) setMatrix(m); });
   }, []);
 
-  if (!data || !matrix) {
+  if (loading) {
     return <p className="text-muted-foreground py-8 text-center text-sm">Loading...</p>;
   }
 
-  const totalModules = matrix.rows.length;
+  if (!data) {
+    return <p className="text-muted-foreground py-8 text-center text-sm">Failed to load dashboard data.</p>;
+  }
+
+  const totalModules = matrix?.rows.length ?? 0;
   const pct = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
 
   return (
@@ -74,8 +83,8 @@ export function DashboardStats() {
 
       {/* Module status chips */}
       <div className="flex flex-wrap gap-1.5">
-        {matrix.stages.map((s) => {
-          const count = matrix.summary[s.name] ?? 0;
+        {(matrix?.stages ?? []).map((s) => {
+          const count = matrix?.summary[s.name] ?? 0;
           return (
             <div
               key={s.id}
@@ -105,7 +114,7 @@ export function DashboardStats() {
                   className="group flex items-center gap-2 rounded px-2 py-1.5 hover:bg-accent transition-colors"
                 >
                   <span
-                    className={`h-2 w-2 rounded-full shrink-0 ${phaseColors[phase] ?? "bg-zinc-500"}`}
+                    className={`h-2 w-2 rounded-full shrink-0 ${phaseColors[phase] ?? "bg-[#888]"}`}
                   />
                   <span className="text-sm flex-1 truncate">
                     {phaseLabels[phase] ?? `Phase ${phase}`}
@@ -153,7 +162,7 @@ export function DashboardStats() {
           {Object.entries(data.byModule)
             .sort(([, a], [, b]) => b.total - a.total)
             .map(([name, stats]) => {
-              const modRow = matrix.rows.find((r) => r.module === name);
+              const modRow = matrix?.rows.find((r) => r.module === name);
               return (
                 <Link
                   key={name}
@@ -180,7 +189,7 @@ function StatCard({ label, value, accent }: { label: string; value: number | str
   return (
     <div className="rounded-md border border-border px-3 py-2">
       <p className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</p>
-      <p className={`text-lg font-bold tabular-nums ${accent ? "text-orange-400" : ""}`}>{value}</p>
+      <p className={`text-lg font-bold tabular-nums ${accent ? "text-[#60a5fa]" : ""}`}>{value}</p>
     </div>
   );
 }
@@ -200,7 +209,7 @@ function MiniBar({ pct, className = "" }: { pct: number; className?: string }) {
   return (
     <div className={`h-1 rounded-full bg-muted overflow-hidden ${className}`}>
       <div
-        className="h-full rounded-full bg-emerald-500 transition-all"
+        className="h-full rounded-full bg-[#4ade80] transition-all"
         style={{ width: `${pct}%` }}
       />
     </div>

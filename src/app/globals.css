@@ -83,44 +83,55 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 14%);
-  --input: oklch(1 0 0 / 18%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #121212;
+  --foreground: #f0f0f0;
+  --card: #1a1a1a;
+  --card-foreground: #f0f0f0;
+  --popover: #1a1a1a;
+  --popover-foreground: #f0f0f0;
+  --primary: #60a5fa;
+  --primary-foreground: #121212;
+  --secondary: #1e1e1e;
+  --secondary-foreground: #f0f0f0;
+  --muted: #1e1e1e;
+  --muted-foreground: #aaa;
+  --accent: #1e1e1e;
+  --accent-foreground: #f0f0f0;
+  --destructive: #A06070;
+  --border: #333;
+  --input: #333;
+  --ring: #60a5fa;
+  --chart-1: #60a5fa;
+  --chart-2: #D4A96A;
+  --chart-3: #7D8C5C;
+  --chart-4: #8B5E3C;
+  --chart-5: #A06070;
+  --sidebar: #161616;
+  --sidebar-foreground: #f0f0f0;
+  --sidebar-primary: #60a5fa;
+  --sidebar-primary-foreground: #f0f0f0;
+  --sidebar-accent: #1e1e1e;
+  --sidebar-accent-foreground: #f0f0f0;
+  --sidebar-border: #2a2a2a;
+  --sidebar-ring: #60a5fa;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    font-size: 16.5px;
+  }
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* LCARS utility classes */
+.lcars-bar-l {
+  border-radius: 9999px 0 0 9999px;
+}
+.lcars-bar-r {
+  border-radius: 0 9999px 9999px 0;
 }

@@ -34,11 +34,11 @@ export function AddTaskForm({ moduleName, modules, date, onAdded, stages }: AddT
 
   useEffect(() => {
     fetch("/api/assignees")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : []))
       .then((data) => { if (Array.isArray(data)) setExistingAssignees(data); });
     if (!stages) {
       fetch("/api/stages")
-        .then((r) => r.json())
+        .then((r) => (r.ok ? r.json() : []))
         .then((data) => {
           if (Array.isArray(data)) setFetchedStages(data.map((s: { name: string }) => s.name));
         });

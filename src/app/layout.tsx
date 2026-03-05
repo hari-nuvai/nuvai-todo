@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { DM_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Nav } from "@/components/nav";
 import { SessionProvider } from "@/components/session-provider";
+import { AuthGate } from "@/components/auth-gate";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NuvaiTodo",
-  description: "Task management dashboard with MCP integration",
+  title: "NuvaiTracker",
+  description: "Unified tracking: accounts, tasks, laptops, payments & modules",
 };
 
 export default function RootLayout({
@@ -31,8 +31,7 @@ export default function RootLayout({
         className={`${dmSans.variable} ${geistMono.variable} font-sans antialiased`}
       >
         <SessionProvider>
-          <Nav />
-          <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+          <AuthGate>{children}</AuthGate>
         </SessionProvider>
       </body>
     </html>

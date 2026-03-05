@@ -32,8 +32,8 @@ interface MatrixData {
   summary: Record<string, number>;
 }
 
-export function StageModuleMatrix() {
-  const [data, setData] = useState<MatrixData | null>(null);
+export function StageModuleMatrix({ initialData }: { initialData?: MatrixData }) {
+  const [data, setData] = useState<MatrixData | null>(initialData ?? null);
   const [editingOwner, setEditingOwner] = useState<string | null>(null);
   const [ownerMode, setOwnerMode] = useState<"pick" | "new">("pick");
   const [ownerInput, setOwnerInput] = useState("");
@@ -42,16 +42,15 @@ export function StageModuleMatrix() {
   const [filterModule, setFilterModule] = useState<string>("all");
 
   useEffect(() => {
-    loadMatrix();
+    if (!initialData) loadMatrix();
     fetch("/api/assignees")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : []))
       .then((d) => { if (Array.isArray(d)) setExistingAssignees(d); });
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadMatrix() {
     const res = await fetch("/api/matrix");
-    const d = await res.json();
-    setData(d);
+    if (res.ok) setData(await res.json());
   }
 
   function handleStatusChange(moduleName: string, newStatus: string) {

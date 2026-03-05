@@ -22,14 +22,16 @@ interface MatrixData {
 export default function ModulesPage() {
   const [modules, setModules] = useState<Module[]>([]);
   const [matrixRows, setMatrixRows] = useState<MatrixRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(() => {
     fetch("/api/modules")
-      .then((r) => r.json())
-      .then(setModules);
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setModules)
+      .finally(() => setLoading(false));
     fetch("/api/matrix")
-      .then((r) => r.json())
-      .then((data: MatrixData) => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: MatrixData | null) => {
         if (data?.rows) setMatrixRows(data.rows);
       });
   }, []);
@@ -48,7 +50,9 @@ export default function ModulesPage() {
         <h1 className="text-2xl font-bold">Modules</h1>
         <AddModuleDialog onAdded={load} />
       </div>
-      {modules.length === 0 ? (
+      {loading ? (
+        <p className="text-muted-foreground text-sm text-center py-8">Loading...</p>
+      ) : modules.length === 0 ? (
         <p className="text-muted-foreground text-center py-8">
           No modules yet. Create one to get started.
         </p>

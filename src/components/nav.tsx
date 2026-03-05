@@ -6,10 +6,9 @@ import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 
 const links = [
-  { href: "/", label: "Dashboard" },
-  { href: "/sprints", label: "GoLive" },
   { href: "/modules", label: "Modules" },
   { href: "/tasks", label: "Tasks" },
+  { href: "/dashboard", label: "Dashboard" },
 ];
 
 export function Nav() {
@@ -17,9 +16,9 @@ export function Nav() {
   const { data: session } = useSession();
 
   return (
-    <nav className="border-b border-border bg-card">
+    <nav className="border-b border-border">
       <div className="mx-auto flex h-14 max-w-5xl items-center gap-6 px-4">
-        <Link href="/" className="text-lg font-bold tracking-tight">
+        <Link href="/" className="text-lg font-bold tracking-tight text-[#60a5fa]">
           NuvaiTodo
         </Link>
         <div className="flex gap-4">
@@ -27,10 +26,10 @@ export function Nav() {
             <Link
               key={l.href}
               href={l.href}
-              className={`text-sm transition-colors hover:text-foreground ${
+              className={`text-sm transition-colors ${
                 pathname === l.href
                   ? "text-foreground font-medium"
-                  : "text-muted-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {l.label}

@@ -17,38 +17,57 @@ interface MatrixData {
   summary: Record<string, number>;
 }
 
-export default function SprintsPage() {
+export default function StatusTrackerPage() {
   const [matrix, setMatrix] = useState<MatrixData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const loadData = useCallback(() => {
-    fetch("/api/matrix")
-      .then((r) => r.json())
-      .then(setMatrix);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/matrix");
+      if (r.ok) setMatrix(await r.json());
+    } catch {}
+    setLoading(false);
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-xl font-bold">Status Tracker</h1>
+        <p className="text-muted-foreground text-sm py-8 text-center">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!matrix) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-xl font-bold">Status Tracker</h1>
+        <p className="text-muted-foreground text-sm py-8 text-center">
+          Failed to load data.{" "}
+          <button onClick={loadData} className="text-primary hover:underline">Retry</button>
+        </p>
+      </div>
+    );
+  }
+
   // Group by status and by module
   const byStage: Record<string, MatrixRow[]> = {};
   const byModule: Record<string, MatrixRow[]> = {};
-  if (matrix) {
-    for (const row of matrix.rows) {
-      if (!byStage[row.status]) byStage[row.status] = [];
-      byStage[row.status].push(row);
-      if (!byModule[row.module]) byModule[row.module] = [];
-      byModule[row.module].push(row);
-    }
+  for (const row of matrix.rows) {
+    if (!byStage[row.status]) byStage[row.status] = [];
+    byStage[row.status].push(row);
+    if (!byModule[row.module]) byModule[row.module] = [];
+    byModule[row.module].push(row);
   }
-
-  const totalModules = matrix?.rows.length ?? 0;
-  const completedModules = matrix?.summary["Completed"] ?? 0;
-  const pct = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">GoLive Tracker</h1>
+      <h1 className="text-xl font-bold">Status Tracker</h1>
 
       <Tabs defaultValue="matrix">
         <TabsList className="h-8">
@@ -58,15 +77,15 @@ export default function SprintsPage() {
         </TabsList>
 
         <TabsContent value="matrix" className="mt-3">
-          <StageModuleMatrix />
+          <StageModuleMatrix initialData={matrix} />
         </TabsContent>
 
         <TabsContent value="by-stage" className="mt-3">
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {matrix?.stages.map((stage) => {
+            {matrix.stages.map((stage) => {
               const rows = byStage[stage.name] ?? [];
               return (
-                <div key={stage.id} className="rounded border border-border p-3 space-y-2">
+                <div key={stage.id} className="rounded border border-border p-3 space-y-2 hover:bg-secondary transition-colors">
                   <div className="flex items-center justify-between">
                     <StageBadge stage={stage.name} />
                     <span className="text-xs text-muted-foreground">
@@ -77,7 +96,7 @@ export default function SprintsPage() {
                     <div className="space-y-1">
                       {rows.map((r) => (
                         <div key={r.module} className="flex items-center justify-between text-sm">
-                          <a href={`/modules/${encodeURIComponent(r.module)}`} className="hover:underline">
+                          <a href={`/modules/${encodeURIComponent(r.module)}`} className="cursor-pointer hover:underline">
                             {r.module}
                           </a>
                           <span className="text-xs text-muted-foreground">{r.owner || "--"}</span>
@@ -99,7 +118,7 @@ export default function SprintsPage() {
               const status = rows[0]?.status ?? "Unknown";
               const owner = rows[0]?.owner ?? "";
               return (
-                <div key={modName} className="rounded border border-border p-3 space-y-1.5">
+                <div key={modName} className="rounded border border-border p-3 space-y-1.5 cursor-pointer hover:bg-secondary transition-colors">
                   <div className="flex items-center justify-between">
                     <a href={`/modules/${encodeURIComponent(modName)}`} className="font-medium text-sm hover:underline">
                       {modName}

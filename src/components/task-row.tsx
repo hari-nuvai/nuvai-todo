@@ -61,7 +61,7 @@ export function TaskRow({
   useEffect(() => {
     if (assigning) {
       fetch("/api/assignees")
-        .then((r) => r.json())
+        .then((r) => (r.ok ? r.json() : []))
         .then((data) => { if (Array.isArray(data)) setExistingAssignees(data); });
     }
   }, [assigning]);

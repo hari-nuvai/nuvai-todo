@@ -1,4 +1,4 @@
-import { createMcpHandler } from "mcp-handler";
+import { createMcpHandler, experimental_withMcpAuth as withMcpAuth } from "mcp-handler";
 import { z } from "zod";
 import {
   listModules,
@@ -23,6 +23,23 @@ import {
   getStageModuleMatrix,
   weeklySummary,
 } from "@/lib/db/queries";
+import {
+  listAccounts,
+  getAccountById,
+  createAccount,
+  updateAccount,
+  listPayments,
+  createPayment,
+  refundPayment,
+  listLaptops,
+  createLaptop,
+  updateLaptop,
+  listCards,
+  createCard,
+  deleteCard,
+  listAuditLogs,
+  getTrackingDashboard,
+} from "@/lib/db/tracking-queries";
 
 const handler = createMcpHandler(
   (server) => {
@@ -652,6 +669,351 @@ const handler = createMcpHandler(
         }
       }
     );
+
+    // ── Accounts (Tracking) ──────────────────────────
+
+    server.registerTool(
+      "list_accounts",
+      {
+        title: "List Accounts",
+        description: "List all Claude subscription accounts. Optionally filter by status or plan type.",
+        inputSchema: {
+          status: z.enum(["ACTIVE", "SUSPENDED", "CANCELLED", "BLOCKED"]).optional().describe("Filter by status"),
+          plan_type: z.enum(["FREE", "PRO", "TEAM", "ENTERPRISE"]).optional().describe("Filter by plan"),
+        },
+      },
+      async ({ status, plan_type }) => {
+        const accts = await listAccounts({ status, planType: plan_type });
+        if (accts.length === 0) return { content: [{ type: "text" as const, text: "No accounts found." }] };
+        let text = `Found ${accts.length} account(s):\n\n`;
+        for (const a of accts) {
+          text += `- ${a.email} | ${a.planType} | $${a.monthlyCost}/mo | ${a.status}\n`;
+        }
+        return { content: [{ type: "text" as const, text }] };
+      }
+    );
+
+    server.registerTool(
+      "get_account",
+      {
+        title: "Get Account",
+        description: "Get details of a specific account by ID",
+        inputSchema: { id: z.string().describe("Account ID") },
+      },
+      async ({ id }) => {
+        const a = await getAccountById(id);
+        if (!a) return { content: [{ type: "text" as const, text: "Account not found." }], isError: true };
+        const text = `Email: ${a.email}\nPlan: ${a.planType}\nCost: $${a.monthlyCost}/mo\nStatus: ${a.status}\nSharing: ${a.sharingEnabled ? "Yes" : "No"}${a.notes ? `\nNotes: ${a.notes}` : ""}`;
+        return { content: [{ type: "text" as const, text }] };
+      }
+    );
+
+    server.registerTool(
+      "create_account",
+      {
+        title: "Create Account",
+        description: "Create a new Claude subscription account",
+        inputSchema: {
+          email: z.string().describe("Account email"),
+          plan_type: z.enum(["FREE", "PRO", "TEAM", "ENTERPRISE"]).default("FREE").describe("Plan type"),
+          monthly_cost: z.string().default("0").describe("Monthly cost"),
+          status: z.enum(["ACTIVE", "SUSPENDED", "CANCELLED", "BLOCKED"]).default("ACTIVE").describe("Status"),
+          notes: z.string().optional().describe("Notes"),
+        },
+      },
+      async ({ email, plan_type, monthly_cost, status, notes }) => {
+        try {
+          const a = await createAccount({ email, planType: plan_type, monthlyCost: monthly_cost, status, notes });
+          return { content: [{ type: "text" as const, text: `Account created: ${a.email} (${a.id})` }] };
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          return { content: [{ type: "text" as const, text: `Error: ${msg}` }], isError: true };
+        }
+      }
+    );
+
+    server.registerTool(
+      "update_account",
+      {
+        title: "Update Account",
+        description: "Update an account's details",
+        inputSchema: {
+          id: z.string().describe("Account ID"),
+          email: z.string().optional().describe("New email"),
+          plan_type: z.enum(["FREE", "PRO", "TEAM", "ENTERPRISE"]).optional().describe("New plan"),
+          monthly_cost: z.string().optional().describe("New monthly cost"),
+          status: z.enum(["ACTIVE", "SUSPENDED", "CANCELLED", "BLOCKED"]).optional().describe("New status"),
+          notes: z.string().optional().describe("New notes"),
+        },
+      },
+      async ({ id, email, plan_type, monthly_cost, status, notes }) => {
+        try {
+          const data: Record<string, unknown> = {};
+          if (email) data.email = email;
+          if (plan_type) data.planType = plan_type;
+          if (monthly_cost) data.monthlyCost = monthly_cost;
+          if (status) data.status = status;
+          if (notes !== undefined) data.notes = notes;
+          const a = await updateAccount(id, data as Parameters<typeof updateAccount>[1]);
+          if (!a) return { content: [{ type: "text" as const, text: "Account not found." }], isError: true };
+          return { content: [{ type: "text" as const, text: `Account ${a.email} updated.` }] };
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          return { content: [{ type: "text" as const, text: `Error: ${msg}` }], isError: true };
+        }
+      }
+    );
+
+    // ── Payments (Tracking) ──────────────────────────
+
+    server.registerTool(
+      "list_payments",
+      {
+        title: "List Payments",
+        description: "List all payments. Optionally filter by account ID or refund status.",
+        inputSchema: {
+          account_id: z.string().optional().describe("Filter by account ID"),
+          refunded: z.boolean().optional().describe("Filter by refund status"),
+        },
+      },
+      async ({ account_id, refunded }) => {
+        const pays = await listPayments({ accountId: account_id, refunded });
+        if (pays.length === 0) return { content: [{ type: "text" as const, text: "No payments found." }] };
+        let text = `Found ${pays.length} payment(s):\n\n`;
+        for (const p of pays) {
+          const status = p.refunded ? "REFUNDED" : "PAID";
+          text += `- $${p.amount} | ${p.accountEmail ?? "?"} | ${p.paymentMethod} | ${status} | ${new Date(p.paidAt).toLocaleDateString()}\n`;
+        }
+        return { content: [{ type: "text" as const, text }] };
+      }
+    );
+
+    server.registerTool(
+      "log_payment",
+      {
+        title: "Log Payment",
+        description: "Record a new payment",
+        inputSchema: {
+          account_id: z.string().describe("Account ID"),
+          amount: z.string().describe("Payment amount"),
+          payment_method: z.enum(["CARD", "BANK_TRANSFER", "CRYPTO", "OTHER"]).default("CARD").describe("Method"),
+          description: z.string().optional().describe("Description"),
+        },
+      },
+      async ({ account_id, amount, payment_method, description }) => {
+        try {
+          const p = await createPayment({ accountId: account_id, amount, paymentMethod: payment_method, description });
+          return { content: [{ type: "text" as const, text: `Payment $${p.amount} logged (${p.id}).` }] };
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          return { content: [{ type: "text" as const, text: `Error: ${msg}` }], isError: true };
+        }
+      }
+    );
+
+    server.registerTool(
+      "refund_payment",
+      {
+        title: "Refund Payment",
+        description: "Mark a payment as refunded",
+        inputSchema: {
+          id: z.string().describe("Payment ID"),
+          reason: z.string().optional().describe("Refund reason"),
+        },
+      },
+      async ({ id, reason }) => {
+        const p = await refundPayment(id, reason);
+        if (!p) return { content: [{ type: "text" as const, text: "Payment not found." }], isError: true };
+        return { content: [{ type: "text" as const, text: `Payment $${p.amount} refunded.` }] };
+      }
+    );
+
+    server.registerTool(
+      "payment_summary",
+      {
+        title: "Payment Summary",
+        description: "Get payment statistics overview",
+        inputSchema: {},
+      },
+      async () => {
+        const d = await getTrackingDashboard();
+        const text = `Payment Summary:\n- Total: ${d.payments.totalPayments} payments\n- Revenue: $${Number(d.payments.totalAmount).toFixed(2)}\n- Refunds: ${d.payments.refunds} ($${Number(d.payments.refundAmount).toFixed(2)})`;
+        return { content: [{ type: "text" as const, text }] };
+      }
+    );
+
+    // ── Laptops (Tracking) ───────────────────────────
+
+    server.registerTool(
+      "list_laptops",
+      {
+        title: "List Laptops",
+        description: "List all tracked laptops. Optionally filter by type (DELL/MAC).",
+        inputSchema: {
+          type: z.enum(["DELL", "MAC"]).optional().describe("Filter by type"),
+        },
+      },
+      async ({ type }) => {
+        const laps = await listLaptops({ type });
+        if (laps.length === 0) return { content: [{ type: "text" as const, text: "No laptops found." }] };
+        let text = `Found ${laps.length} laptop(s):\n\n`;
+        for (const l of laps) {
+          text += `- ${l.assetTag} | ${l.type} ${l.brand} ${l.model} | ${l.assignedTo ?? "Unassigned"}${l.department ? ` (${l.department})` : ""}\n`;
+        }
+        return { content: [{ type: "text" as const, text }] };
+      }
+    );
+
+    server.registerTool(
+      "add_laptop",
+      {
+        title: "Add Laptop",
+        description: "Register a new laptop in the tracker",
+        inputSchema: {
+          asset_tag: z.string().describe("Unique asset tag"),
+          type: z.enum(["DELL", "MAC"]).describe("Laptop type"),
+          brand: z.string().describe("Brand"),
+          model: z.string().describe("Model"),
+          serial_number: z.string().optional().describe("Serial number"),
+          specs: z.string().optional().describe("Hardware specs"),
+          assigned_to: z.string().optional().describe("Assigned user"),
+          department: z.string().optional().describe("Department"),
+        },
+      },
+      async ({ asset_tag, type, brand, model, serial_number, specs, assigned_to, department }) => {
+        try {
+          const l = await createLaptop({
+            assetTag: asset_tag, type, brand, model,
+            serialNumber: serial_number, specs, assignedTo: assigned_to, department,
+          });
+          return { content: [{ type: "text" as const, text: `Laptop ${l.assetTag} added (${l.id}).` }] };
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          return { content: [{ type: "text" as const, text: `Error: ${msg}` }], isError: true };
+        }
+      }
+    );
+
+    server.registerTool(
+      "update_laptop",
+      {
+        title: "Update Laptop",
+        description: "Update a laptop's details",
+        inputSchema: {
+          id: z.string().describe("Laptop ID"),
+          assigned_to: z.string().optional().describe("New assignee"),
+          department: z.string().optional().describe("New department"),
+          specs: z.string().optional().describe("New specs"),
+          notes: z.string().optional().describe("Notes"),
+        },
+      },
+      async ({ id, assigned_to, department, specs, notes }) => {
+        const data: Record<string, unknown> = {};
+        if (assigned_to !== undefined) data.assignedTo = assigned_to;
+        if (department !== undefined) data.department = department;
+        if (specs !== undefined) data.specs = specs;
+        if (notes !== undefined) data.notes = notes;
+        const l = await updateLaptop(id, data as Parameters<typeof updateLaptop>[1]);
+        if (!l) return { content: [{ type: "text" as const, text: "Laptop not found." }], isError: true };
+        return { content: [{ type: "text" as const, text: `Laptop ${l.assetTag} updated.` }] };
+      }
+    );
+
+    server.registerTool(
+      "laptop_summary",
+      {
+        title: "Laptop Summary",
+        description: "Get laptop inventory overview",
+        inputSchema: {},
+      },
+      async () => {
+        const d = await getTrackingDashboard();
+        const text = `Laptop Summary:\n- Total: ${d.laptops.total}\n- Dell: ${d.laptops.dell}\n- Mac: ${d.laptops.mac}\n- Assigned: ${d.laptops.assigned}\n- Unassigned: ${d.laptops.total - d.laptops.assigned}`;
+        return { content: [{ type: "text" as const, text }] };
+      }
+    );
+
+    // ── Cards (Tracking) ─────────────────────────────
+
+    server.registerTool(
+      "list_cards",
+      {
+        title: "List Cards",
+        description: "List all payment cards on file",
+        inputSchema: {},
+      },
+      async () => {
+        const crds = await listCards();
+        if (crds.length === 0) return { content: [{ type: "text" as const, text: "No cards found." }] };
+        let text = `Found ${crds.length} card(s):\n\n`;
+        for (const c of crds) {
+          text += `- ****${c.last4} | ${c.cardholderName} | ${c.cardType}${c.bankName ? ` | ${c.bankName}` : ""}\n`;
+        }
+        return { content: [{ type: "text" as const, text }] };
+      }
+    );
+
+    server.registerTool(
+      "add_card",
+      {
+        title: "Add Card",
+        description: "Add a new payment card",
+        inputSchema: {
+          cardholder_name: z.string().describe("Cardholder name"),
+          last4: z.string().describe("Last 4 digits"),
+          card_type: z.enum(["CREDIT", "DEBIT", "PREPAID"]).default("CREDIT").describe("Card type"),
+          bank_name: z.string().optional().describe("Bank name"),
+        },
+      },
+      async ({ cardholder_name, last4, card_type, bank_name }) => {
+        try {
+          const c = await createCard({ cardholderName: cardholder_name, last4, cardType: card_type, bankName: bank_name });
+          return { content: [{ type: "text" as const, text: `Card ****${c.last4} added (${c.id}).` }] };
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          return { content: [{ type: "text" as const, text: `Error: ${msg}` }], isError: true };
+        }
+      }
+    );
+
+    server.registerTool(
+      "delete_card",
+      {
+        title: "Delete Card",
+        description: "Remove a payment card by ID",
+        inputSchema: {
+          id: z.string().describe("Card ID"),
+        },
+      },
+      async ({ id }) => {
+        const card = await deleteCard(id);
+        if (!card) return { content: [{ type: "text" as const, text: "Card not found." }], isError: true };
+        return { content: [{ type: "text" as const, text: `Card ****${card.last4} (${card.cardholderName}) deleted.` }] };
+      }
+    );
+
+    // ── Audit Logs (Tracking) ────────────────────────
+
+    server.registerTool(
+      "list_audit_logs",
+      {
+        title: "List Audit Logs",
+        description: "View audit log entries. Optionally filter by entity type.",
+        inputSchema: {
+          entity_type: z.string().optional().describe("Filter by entity type: account, payment, laptop, card"),
+        },
+      },
+      async ({ entity_type }) => {
+        const logs = await listAuditLogs({ entityType: entity_type });
+        if (logs.length === 0) return { content: [{ type: "text" as const, text: "No audit logs found." }] };
+        let text = `Found ${logs.length} log(s):\n\n`;
+        for (const l of logs.slice(0, 50)) {
+          text += `- [${new Date(l.createdAt).toLocaleString()}] ${l.action} ${l.entityType}${l.entityId ? ` (${l.entityId})` : ""}\n`;
+        }
+        if (logs.length > 50) text += `\n... and ${logs.length - 50} more`;
+        return { content: [{ type: "text" as const, text }] };
+      }
+    );
   },
   {},
   {
@@ -661,4 +1023,17 @@ const handler = createMcpHandler(
   }
 );
 
-export { handler as GET, handler as POST };
+const authedHandler = withMcpAuth(
+  handler,
+  async (_req, bearerToken) => {
+    const key = process.env.MCP_API_KEY ?? process.env.MCP_KEY;
+    if (!key) return undefined;
+    if (bearerToken === key) {
+      return { token: bearerToken, clientId: "mcp-client", scopes: [] };
+    }
+    return undefined;
+  },
+  { required: true }
+);
+
+export { authedHandler as GET, authedHandler as POST };

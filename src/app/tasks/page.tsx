@@ -30,6 +30,7 @@ function TasksPageContent() {
   const weekEnd = fmt(getFriday(new Date(weekStart + "T00:00:00")));
 
   const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [modules, setModules] = useState<string[]>([]);
   const [stages, setStages] = useState<string[]>([]);
   const [module, setModule] = useState(() => searchParams.get("module") || "all");
@@ -50,11 +51,13 @@ function TasksPageContent() {
     if (status === "pending") params.set("done", "false");
     if (status === "done") params.set("done", "true");
 
+    setLoading(true);
     fetch(`/api/tasks?${params}`)
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         if (Array.isArray(data)) setTasks(data);
-      });
+      })
+      .finally(() => setLoading(false));
   }, [weekStart, weekEnd, module, stage, phase, assignee, status]);
 
   useEffect(() => {
@@ -63,7 +66,7 @@ function TasksPageContent() {
 
   const loadModules = useCallback(() => {
     fetch("/api/modules")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         if (Array.isArray(data))
           setModules(data.map((m: { name: string }) => m.name));
@@ -72,7 +75,7 @@ function TasksPageContent() {
 
   const loadStages = useCallback(() => {
     fetch("/api/stages")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         if (Array.isArray(data))
           setStages(data.map((s: { name: string }) => s.name));
@@ -236,7 +239,9 @@ function TasksPageContent() {
       )}
 
       {/* Task list grouped by stage */}
-      {Object.keys(tasksByStage).length > 0 ? (
+      {loading ? (
+        <p className="text-muted-foreground text-sm py-2 text-center">Loading...</p>
+      ) : Object.keys(tasksByStage).length > 0 ? (
         <div className="space-y-2">
           {Object.entries(tasksByStage).map(([sName, stageTasks]) => (
             <StageTaskGroup
@@ -253,17 +258,9 @@ function TasksPageContent() {
           ))}
         </div>
       ) : (
-        <TaskList
-          tasks={tasks}
-          moduleName=""
-          showModule
-          onComplete={handleComplete}
-          onDelete={handleDelete}
-          onAssign={handleAssign}
-          onEdit={handleEdit}
-          onDateChange={handleDateChange}
-          onPhaseChange={handlePhaseChange}
-        />
+        <p className="text-muted-foreground text-sm py-2 text-center">
+          No tasks for this week.
+        </p>
       )}
     </div>
   );
